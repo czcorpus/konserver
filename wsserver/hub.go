@@ -20,6 +20,7 @@ import (
 	"log"
 
 	"github.com/czcorpus/kontext-atn/kcache"
+	"github.com/czcorpus/kontext-atn/taskdb"
 )
 
 // Hub controls the communication between
@@ -29,16 +30,18 @@ type Hub struct {
 	Unregister      chan *Client
 	ConcCacheEvents chan *kcache.ConcCacheEvent
 	watchedTasks    map[string]*Client // task id => client
+	cacheDB         *taskdb.ConcCacheDB
 }
 
 // NewHub creates a proper instance of the Hub
 // with all the channels initialized
-func NewHub() *Hub {
+func NewHub(cacheDB *taskdb.ConcCacheDB) *Hub {
 	return &Hub{
 		Register:        make(chan *Client),
 		Unregister:      make(chan *Client),
 		ConcCacheEvents: make(chan *kcache.ConcCacheEvent, 5), // TODO configurable buffer
 		watchedTasks:    make(map[string]*Client),
+		cacheDB:         cacheDB,
 	}
 }
 
@@ -48,17 +51,17 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			h.watchedTasks[client.taskID] = client
-			log.Printf("INFO: Hub registered task %s", client.taskID)
+			h.watchedTasks[client.CacheKey] = client
+			log.Printf("INFO: Hub registered task %s", client.CacheKey)
 			go client.Run()
-			go kcache.Watch(h.ConcCacheEvents, client.taskID)
+			go kcache.Watch(h.ConcCacheEvents, h.cacheDB, client.CorpusID, client.CacheKey)
 		case client := <-h.Unregister:
-			if _, ok := h.watchedTasks[client.taskID]; ok {
-				delete(h.watchedTasks, client.taskID)
+			if _, ok := h.watchedTasks[client.CacheKey]; ok {
+				delete(h.watchedTasks, client.CacheKey)
 			}
-			log.Printf("INFO: Hub unregistered task %s", client.taskID)
+			log.Printf("INFO: Hub unregistered cache key %s", client.CacheKey)
 		case event := <-h.ConcCacheEvents:
-			client, ok := h.watchedTasks[event.TaskID]
+			client, ok := h.watchedTasks[event.CacheKey]
 			status := NewConcStatusResponse(event)
 			if ok {
 				client.Incoming <- status

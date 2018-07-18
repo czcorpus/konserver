@@ -34,8 +34,8 @@ type ConcStatusResponse struct {
 
 func NewConcStatusResponse(evt *kcache.ConcCacheEvent) *ConcStatusResponse {
 	return &ConcStatusResponse{
-		ConcSize:    evt.ConcSize,
-		RelConcSize: evt.RelConcSize,
-		Finished:    evt.Finished,
+		ConcSize:    evt.ConcSize(),
+		RelConcSize: evt.RelConcSize(),
+		Finished:    evt.Finished(),
 	}
 }
