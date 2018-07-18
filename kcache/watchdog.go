@@ -19,46 +19,61 @@ package kcache
 import (
 	"log"
 	"time"
+
+	"github.com/czcorpus/kontext-atn/taskdb"
 )
 
 // ConcCacheEvent contains status data related
 // to a specific concordance calculation.
 type ConcCacheEvent struct {
+	CorpusID string
 
-	// A respective Celery (or other worker queue) task identifier
-	TaskID string
+	CacheKey string
 
-	// The current concordance size (as the calculation runs)
-	ConcSize int
+	Record *taskdb.CacheRecord
 
-	// ??? TODO
-	RelConcSize float32
+	Error error
+}
 
-	// Calculation status (true should be set in any finished state - incl. error)
-	Finished bool
+func (c *ConcCacheEvent) ConcSize() int {
+	return c.Record.ConcSize
+}
+
+func (c *ConcCacheEvent) RelConcSize() float32 {
+	return c.Record.RelConcSize
+}
+
+func (c *ConcCacheEvent) Finished() bool {
+	return c.Record.Finished
 }
 
 // Watch is currently a fake stuff to be able
 // to test WebSocket & Hub part
-func Watch(events chan *ConcCacheEvent, taskID string) {
-	i := 0
+func Watch(events chan *ConcCacheEvent, cacheDb *taskdb.ConcCacheDB, corpusID string, cacheKey string) {
+
 	for {
-		finished := false
-		if i == 4 {
-			finished = true
-		}
-		events <- &ConcCacheEvent{
-			TaskID:      taskID,
-			ConcSize:    i,
-			RelConcSize: 0.0,
-			Finished:    finished,
+
+		rec, err := cacheDb.GetItem(corpusID, cacheKey)
+		if err != nil {
+			events <- &ConcCacheEvent{
+				CorpusID: corpusID,
+				CacheKey: cacheKey,
+				Record:   rec,
+				Error:    err,
+			}
+			break
 		}
 
-		if finished {
+		events <- &ConcCacheEvent{
+			CorpusID: corpusID,
+			CacheKey: cacheKey,
+			Record:   rec,
+		}
+		if rec.Finished {
 			break
 		}
 		time.Sleep(time.Duration(1) * time.Second)
-		i++
+
 	}
-	log.Printf("Watchdog for task %s finished.", taskID)
+	log.Printf("Watchdog for cache item %s finished.", cacheKey)
 }

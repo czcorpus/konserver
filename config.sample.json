@@ -1,0 +1,9 @@
+{
+    "wsServer": {
+        "address": "localhost:8083"
+    },
+    "cacheDb": {
+        "address": "10.0.3.149:6379",
+        "database": 1
+    }
+}

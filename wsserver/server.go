@@ -25,7 +25,7 @@ import (
 )
 
 type WSServerConfig struct {
-	Address string
+	Address string `json:"address"`
 }
 
 type WSServer struct {
@@ -64,8 +64,9 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 	}
 	conn, err := upgrader.Upgrade(writer, request, nil)
 
-	taskID := request.URL.Query().Get("task")
-	s.hub.Register <- NewClient(taskID, s.hub, conn)
+	corpusID := request.URL.Query().Get("corpusId")
+	cacheKey := request.URL.Query().Get("cacheKey")
+	s.hub.Register <- NewClient(corpusID, cacheKey, s.hub, conn)
 
 	if err != nil {
 		log.Println(err)

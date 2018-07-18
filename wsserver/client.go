@@ -29,7 +29,8 @@ import (
 // client (= browser) and sends data it recieves
 // from a respective channel.
 type Client struct {
-	taskID   string
+	CorpusID string
+	CacheKey string
 	hub      *Hub
 	conn     *websocket.Conn
 	Incoming chan *ConcStatusResponse
@@ -37,9 +38,10 @@ type Client struct {
 
 // NewClient creates a proper instance of Client
 // with all the channels initialized.
-func NewClient(taskID string, hub *Hub, conn *websocket.Conn) *Client {
+func NewClient(corpusID string, cacheKey string, hub *Hub, conn *websocket.Conn) *Client {
 	return &Client{
-		taskID:   taskID,
+		CorpusID: corpusID,
+		CacheKey: cacheKey,
 		hub:      hub,
 		conn:     conn,
 		Incoming: make(chan *ConcStatusResponse),
@@ -70,7 +72,7 @@ func (c *Client) Run() {
 			}
 			cw.Write(ans)
 		case <-time.After(5 * time.Second):
-			log.Printf("INFO: Closing client for task %s after timeout.", c.taskID)
+			log.Printf("INFO: Closing client for cache item %s after timeout.", c.CacheKey)
 			return
 		}
 	}
