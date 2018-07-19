@@ -47,6 +47,10 @@ func (c *ConcCacheEvent) Finished() bool {
 	return c.Record.Finished
 }
 
+func (c *ConcCacheEvent) FullSize() int {
+	return c.Record.FullSize
+}
+
 // Watch is currently a fake stuff to be able
 // to test WebSocket & Hub part
 func Watch(events chan *ConcCacheEvent, cacheDb *taskdb.ConcCacheDB, corpusID string, cacheKey string) {
