@@ -20,6 +20,8 @@ import (
 	"github.com/czcorpus/kontext-atn/kcache"
 )
 
+// ConcStatusResponse specifies a conc. calculation
+// status as required by KonText client.
 type ConcStatusResponse struct {
 	FullSize            int      `json:"fullsize"`
 	ConcSize            int      `json:"concsize"`
@@ -32,6 +34,8 @@ type ConcStatusResponse struct {
 	ARF                 float32  `json:"arf"`
 }
 
+// NewConcStatusResponse creates a properly
+// initialized ConcStatusResponse
 func NewConcStatusResponse(evt *kcache.ConcCacheEvent) *ConcStatusResponse {
 	return &ConcStatusResponse{
 		ConcSize:    evt.ConcSize(),

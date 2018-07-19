@@ -17,10 +17,15 @@
 package kcache
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/czcorpus/kontext-atn/taskdb"
+)
+
+const (
+	watchdogWatchIntervalSec = 1
 )
 
 // ConcCacheEvent contains status data related
@@ -35,28 +40,50 @@ type ConcCacheEvent struct {
 	Error error
 }
 
+func (c *ConcCacheEvent) String() string {
+	return fmt.Sprintf("ConcCacheEvent[CorpusID: %s, CacheKey: %s, Error: %s, Record: %v ]",
+		c.CorpusID, c.CacheKey, c.Error, c.Record)
+}
+
+// ConcSize returns current conconrdance size
 func (c *ConcCacheEvent) ConcSize() int {
-	return c.Record.ConcSize
+	if c.Record != nil {
+		return c.Record.ConcSize
+	}
+	return -1
 }
 
+// RelConcSize returns a relative concordance
+// size scaled to million tokens (aka "i.p.m")
 func (c *ConcCacheEvent) RelConcSize() float32 {
-	return c.Record.RelConcSize
+	if c.Record != nil {
+		return c.Record.RelConcSize
+	}
+	return -1
 }
 
+// Finished returns calc. status ("true" means "finished")
 func (c *ConcCacheEvent) Finished() bool {
-	return c.Record.Finished
+	if c.Record != nil {
+		return c.Record.Finished
+	}
+	return true
 }
 
+// FullSize - this value has no clear use in KonText
+// but we keep it passing around.
 func (c *ConcCacheEvent) FullSize() int {
-	return c.Record.FullSize
+	if c.Record != nil {
+		return c.Record.FullSize
+	}
+	return -1
 }
 
-// Watch is currently a fake stuff to be able
-// to test WebSocket & Hub part
-func Watch(events chan *ConcCacheEvent, cacheDb *taskdb.ConcCacheDB, corpusID string, cacheKey string) {
+// Watch looks in regular intervals for a specific cache key and
+// sends the data via 'events' channel.
+func Watch(cacheDb *taskdb.ConcCacheDB, corpusID string, cacheKey string, events chan *ConcCacheEvent) {
 
 	for {
-
 		rec, err := cacheDb.GetItem(corpusID, cacheKey)
 		if err != nil {
 			events <- &ConcCacheEvent{
@@ -76,7 +103,7 @@ func Watch(events chan *ConcCacheEvent, cacheDb *taskdb.ConcCacheDB, corpusID st
 		if rec.Finished {
 			break
 		}
-		time.Sleep(time.Duration(1) * time.Second)
+		time.Sleep(time.Duration(watchdogWatchIntervalSec) * time.Second)
 
 	}
 	log.Printf("Watchdog for cache item %s finished.", cacheKey)

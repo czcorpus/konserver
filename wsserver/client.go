@@ -22,6 +22,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/czcorpus/kontext-atn/kcache"
 	"github.com/gorilla/websocket"
 )
 
@@ -29,23 +30,33 @@ import (
 // client (= browser) and sends data it recieves
 // from a respective channel.
 type Client struct {
-	CorpusID string
-	CacheKey string
-	hub      *Hub
-	conn     *websocket.Conn
-	Incoming chan *ConcStatusResponse
+	cacheIdent *kcache.CacheIdent
+	hub        *Hub
+	conn       *websocket.Conn
+	Incoming   chan *ConcStatusResponse
+	Errors     chan error
 }
 
 // NewClient creates a proper instance of Client
 // with all the channels initialized.
-func NewClient(corpusID string, cacheKey string, hub *Hub, conn *websocket.Conn) *Client {
+func NewClient(cacheIdent *kcache.CacheIdent, hub *Hub, conn *websocket.Conn) *Client {
 	return &Client{
-		CorpusID: corpusID,
-		CacheKey: cacheKey,
-		hub:      hub,
-		conn:     conn,
-		Incoming: make(chan *ConcStatusResponse),
+		cacheIdent: cacheIdent,
+		hub:        hub,
+		conn:       conn,
+		Incoming:   make(chan *ConcStatusResponse),
+		Errors:     make(chan error),
 	}
+}
+
+func (c *Client) String() string {
+	return fmt.Sprintf("Client[%s, %s]", c.cacheIdent.CorpusID, c.cacheIdent.CacheKey)
+}
+
+// CacheIdent returns a complete concordance cache
+// identification based on how KonText works.
+func (c *Client) CacheIdent() *kcache.CacheIdent {
+	return c.cacheIdent
 }
 
 // Run starts to listen on all the channels.
@@ -71,8 +82,11 @@ func (c *Client) Run() {
 					websocket.FormatCloseMessage(1011, fmt.Sprintf("%s", err)))
 			}
 			cw.Write(ans)
+		case evtErr := <-c.Errors:
+			c.conn.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(1011, fmt.Sprintf("%s", evtErr)))
 		case <-time.After(5 * time.Second):
-			log.Printf("INFO: Closing client for cache item %s after timeout.", c.CacheKey)
+			log.Printf("INFO: Closing client for cache item %s after timeout.", c.cacheIdent.CacheKey)
 			return
 		}
 	}
