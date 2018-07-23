@@ -17,40 +17,50 @@
 package wsserver
 
 import (
+	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 
-	"github.com/gorilla/mux"
+	"github.com/czcorpus/kontext-atn/kcache"
 	"github.com/gorilla/websocket"
 )
 
-type WSServerConfig struct {
+// Config defines a configuration
+// required by kontext-atn to run the
+// embedded WebSocket server.
+type Config struct {
 	Address string `json:"address"`
 }
 
+// WSServer handles HTTP/WebSocket requests/connections defined for kontex-atn
 type WSServer struct {
-	conf   *WSServerConfig
-	router *mux.Router
-	hub    *Hub
+	conf          *Config
+	hub           *Hub
+	cacheRootPath string
 }
 
-func NewWSServer(hub *Hub, conf *WSServerConfig) *WSServer {
+// NewWSServer creates a properly initialized
+// instance of WSServer
+func NewWSServer(hub *Hub, conf *Config, cacheRootPath string) *WSServer {
 	ans := &WSServer{
-		conf:   conf,
-		hub:    hub,
-		router: mux.NewRouter(),
+		conf:          conf,
+		hub:           hub,
+		cacheRootPath: cacheRootPath,
 	}
 	ans.init()
 	return ans
 }
 
 func (s *WSServer) init() {
-	s.router.HandleFunc("/", s.serveHome)
-	s.router.HandleFunc("/ws", s.serveNotifier)
-	http.Handle("/", s.router)
+	http.HandleFunc("/", s.serveHome)
+	http.HandleFunc("/ws", s.serveNotifier)
 }
 
+// Serve starts the server and blocks until
+// it is closed.
 func (s *WSServer) Serve() {
+	log.Printf("INFO: Listening on %s", s.conf.Address)
 	http.ListenAndServe(s.conf.Address, nil)
 }
 
@@ -66,7 +76,12 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 
 	corpusID := request.URL.Query().Get("corpusId")
 	cacheKey := request.URL.Query().Get("cacheKey")
-	s.hub.Register <- NewClient(corpusID, cacheKey, s.hub, conn)
+	cacheIdent := &kcache.CacheIdent{
+		CorpusID:      corpusID,
+		CacheKey:      cacheKey,
+		CacheFilePath: filepath.Join(s.cacheRootPath, corpusID, cacheKey+".conc"),
+	}
+	s.hub.Register <- NewClient(cacheIdent, s.hub, conn)
 
 	if err != nil {
 		log.Println(err)
@@ -75,15 +90,15 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 }
 
 func (s *WSServer) serveHome(writer http.ResponseWriter, request *http.Request) {
-	log.Print("Serve home: ", request.URL.Path)
 	if request.URL.Path != "/" {
 		http.Error(writer, "Not found", http.StatusNotFound)
 		return
 	}
-	log.Print("cool")
 	if request.Method != "GET" {
 		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	http.ServeFile(writer, request, "./resources/index.html")
+	out := "This is kontext-atn WebSocket server.\n\nUse /ws?corpusId=...&cacheKey=...\nto use concordance status notification service."
+	writer.Header().Set("Content-Type", "text/plain; charset=UTF-8")
+	io.WriteString(writer, out)
 }

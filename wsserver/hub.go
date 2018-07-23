@@ -17,6 +17,8 @@
 package wsserver
 
 import (
+	"crypto/md5"
+	"fmt"
 	"log"
 
 	"github.com/czcorpus/kontext-atn/kcache"
@@ -29,7 +31,8 @@ type Hub struct {
 	Register        chan *Client
 	Unregister      chan *Client
 	ConcCacheEvents chan *kcache.ConcCacheEvent
-	watchedTasks    map[string]*Client // task id => client
+	watchedTasks    map[string]*Client // cache ID => client
+	lastUpdates     map[string]int64   // cache ID => unix time
 	cacheDB         *taskdb.ConcCacheDB
 }
 
@@ -41,8 +44,23 @@ func NewHub(cacheDB *taskdb.ConcCacheDB) *Hub {
 		Unregister:      make(chan *Client),
 		ConcCacheEvents: make(chan *kcache.ConcCacheEvent, 5), // TODO configurable buffer
 		watchedTasks:    make(map[string]*Client),
+		lastUpdates:     make(map[string]int64),
 		cacheDB:         cacheDB,
 	}
+}
+
+func mkClientHash(client *Client) string {
+	h := md5.New()
+	h.Write([]byte(client.CacheIdent().CorpusID))
+	h.Write([]byte(client.CacheIdent().CacheKey))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func mkEventHash(evt *kcache.ConcCacheEvent) string {
+	h := md5.New()
+	h.Write([]byte(evt.CorpusID))
+	h.Write([]byte(evt.CacheKey))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // Run starts listen on all the channels.
@@ -51,20 +69,27 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
-			h.watchedTasks[client.CacheKey] = client
-			log.Printf("INFO: Hub registered task %s", client.CacheKey)
+			h.watchedTasks[mkClientHash(client)] = client
+			log.Printf("INFO: Registered %v", client)
 			go client.Run()
-			go kcache.Watch(h.ConcCacheEvents, h.cacheDB, client.CorpusID, client.CacheKey)
+			go kcache.Watch(h.cacheDB, client.CacheIdent().CorpusID, client.CacheIdent().CacheKey, h.ConcCacheEvents)
 		case client := <-h.Unregister:
-			if _, ok := h.watchedTasks[client.CacheKey]; ok {
-				delete(h.watchedTasks, client.CacheKey)
+			if _, ok := h.watchedTasks[mkClientHash(client)]; ok {
+				delete(h.watchedTasks, mkClientHash(client))
 			}
-			log.Printf("INFO: Hub unregistered cache key %s", client.CacheKey)
+			log.Printf("INFO: Unregistered %v", client)
 		case event := <-h.ConcCacheEvents:
-			client, ok := h.watchedTasks[event.CacheKey]
-			status := NewConcStatusResponse(event)
+			eventHash := mkEventHash(event)
+			client, ok := h.watchedTasks[eventHash]
 			if ok {
-				client.Incoming <- status
+				if event.Error != nil {
+					client.Errors <- event.Error
+
+				} else if event.Record.LastUpdate > h.lastUpdates[eventHash] {
+					status := NewConcStatusResponse(event)
+					client.Incoming <- status
+					h.lastUpdates[eventHash] = event.Record.LastUpdate
+				}
 			}
 		}
 

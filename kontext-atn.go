@@ -26,9 +26,12 @@ import (
 	"github.com/czcorpus/kontext-atn/wsserver"
 )
 
+// AppConfig contains whole kontext-atn
+// configuration
 type AppConfig struct {
-	WSServerConfig wsserver.WSServerConfig `json:"wsServer"`
-	Redis          taskdb.ConcCacheDBConf  `json:"cacheDb"`
+	WSServerConfig wsserver.Config        `json:"wsServer"`
+	Redis          taskdb.ConcCacheDBConf `json:"cacheDb"`
+	CacheRootDir   string                 `json:"cacheRootDir"`
 }
 
 func loadConfig(path string) (*AppConfig, error) {
@@ -48,11 +51,11 @@ func main() {
 	flag.Parse()
 	conf, err := loadConfig(flag.Arg(0))
 	if err != nil {
-		log.Fatalf("Failed to read conf %s: %s", flag.Arg(0), err)
+		log.Fatalf("ERROR: Failed to read conf %s: %s", flag.Arg(0), err)
 	}
 	cacheDB := taskdb.NewConcCacheDB(&conf.Redis)
 	hub := wsserver.NewHub(cacheDB)
 	go hub.Run()
-	server := wsserver.NewWSServer(hub, &conf.WSServerConfig)
+	server := wsserver.NewWSServer(hub, &conf.WSServerConfig, conf.CacheRootDir)
 	server.Serve()
 }
