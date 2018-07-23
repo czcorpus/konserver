@@ -21,6 +21,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/czcorpus/kontext-atn/taskdb"
 	"github.com/czcorpus/kontext-atn/wsserver"
@@ -32,6 +33,7 @@ type AppConfig struct {
 	WSServerConfig wsserver.Config        `json:"wsServer"`
 	Redis          taskdb.ConcCacheDBConf `json:"cacheDb"`
 	CacheRootDir   string                 `json:"cacheRootDir"`
+	LogPath        string                 `json:"logPath"`
 }
 
 func loadConfig(path string) (*AppConfig, error) {
@@ -53,6 +55,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("ERROR: Failed to read conf %s: %s", flag.Arg(0), err)
 	}
+	if conf.LogPath != "" {
+		logf, err := os.OpenFile(conf.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
+		if err != nil {
+			log.Fatal("ERROR: ", err)
+		}
+		log.SetOutput(logf)
+	}
+
 	cacheDB := taskdb.NewConcCacheDB(&conf.Redis)
 	hub := wsserver.NewHub(cacheDB)
 	go hub.Run()
