@@ -78,6 +78,10 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 		},
 	}
 	conn, err := upgrader.Upgrade(writer, request, nil)
+	if err != nil {
+		log.Print("ERROR: ", err)
+		return
+	}
 
 	corpusID := request.URL.Query().Get("corpusId")
 	cacheKey := request.URL.Query().Get("cacheKey")
@@ -87,11 +91,6 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 		CacheFilePath: filepath.Join(s.cacheRootPath, corpusID, cacheKey+".conc"),
 	}
 	s.hub.Register <- NewClient(cacheIdent, s.hub, conn)
-
-	if err != nil {
-		log.Println(err)
-		return
-	}
 }
 
 func (s *WSServer) serveHome(writer http.ResponseWriter, request *http.Request) {
