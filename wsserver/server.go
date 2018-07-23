@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/czcorpus/kontext-atn/kcache"
 	"github.com/gorilla/websocket"
@@ -30,7 +31,8 @@ import (
 // required by kontext-atn to run the
 // embedded WebSocket server.
 type Config struct {
-	Address string `json:"address"`
+	Address     string `json:"address"`
+	URLPathRoot string `json:"urlPathRoot"`
 }
 
 // WSServer handles HTTP/WebSocket requests/connections defined for kontex-atn
@@ -53,14 +55,17 @@ func NewWSServer(hub *Hub, conf *Config, cacheRootPath string) *WSServer {
 }
 
 func (s *WSServer) init() {
-	http.HandleFunc("/", s.serveHome)
-	http.HandleFunc("/ws", s.serveNotifier)
+	if !strings.HasPrefix(s.conf.URLPathRoot, "/") {
+		log.Fatal("URLPathRoot must start with /")
+	}
+	http.HandleFunc(s.conf.URLPathRoot, s.serveHome)
+	http.HandleFunc(s.conf.URLPathRoot+"/ws", s.serveNotifier)
 }
 
 // Serve starts the server and blocks until
 // it is closed.
 func (s *WSServer) Serve() {
-	log.Printf("INFO: Listening on %s", s.conf.Address)
+	log.Printf("INFO: Serving at %s", s.conf.Address+s.conf.URLPathRoot)
 	http.ListenAndServe(s.conf.Address, nil)
 }
 
@@ -90,7 +95,7 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 }
 
 func (s *WSServer) serveHome(writer http.ResponseWriter, request *http.Request) {
-	if request.URL.Path != "/" {
+	if request.URL.Path != s.conf.URLPathRoot {
 		http.Error(writer, "Not found", http.StatusNotFound)
 		return
 	}
