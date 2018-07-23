@@ -1,7 +1,7 @@
 {
     "wsServer": {
         "address": "localhost:8083",
-        "urlPathRoot": "/foo"
+        "urlPathRoot": "/kontext/atn"
     },
     "cacheDb": {
         "address": "10.0.3.188:6379",
