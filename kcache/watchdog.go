@@ -28,6 +28,17 @@ const (
 	watchdogWatchIntervalSec = 1
 )
 
+// CacheIdent provides complete information
+// about concordance cache record.
+// In KonText, cache file path is typically
+// derived from other two values but here
+// we treat it as an independent item.
+type CacheIdent struct {
+	CorpusID      string
+	CacheKey      string
+	CacheFilePath string
+}
+
 // ConcCacheEvent contains status data related
 // to a specific concordance calculation.
 type ConcCacheEvent struct {
