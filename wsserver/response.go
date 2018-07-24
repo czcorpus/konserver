@@ -40,6 +40,7 @@ func NewConcStatusResponse(evt *kcache.ConcCacheEvent) *ConcStatusResponse {
 	return &ConcStatusResponse{
 		ConcSize:    evt.ConcSize(),
 		RelConcSize: evt.RelConcSize(),
+		ARF:         evt.ARF(),
 		FullSize:    evt.FullSize(),
 		Finished:    evt.Finished(),
 	}
