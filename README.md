@@ -26,6 +26,7 @@ RestartSec=30
 User=www-data
 ExecStart=/bin/bash -c '/opt/go/bin/kontext-atn /opt/kontext-atn/config.json'
 ExecStop=/bin/kill -s TERM $MAINPID
+ExecReload=/bin/kill -s HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target
