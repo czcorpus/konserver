@@ -33,8 +33,9 @@ type Client struct {
 	cacheIdent *kcache.CacheIdent
 	hub        *Hub
 	conn       *websocket.Conn
-	Incoming   chan *ConcStatusResponse
-	Errors     chan error
+	Incoming   chan *kcache.ConcCacheEvent
+	lastUpdate int64
+	stop       chan bool
 }
 
 // NewClient creates a proper instance of Client
@@ -44,8 +45,9 @@ func NewClient(cacheIdent *kcache.CacheIdent, hub *Hub, conn *websocket.Conn) *C
 		cacheIdent: cacheIdent,
 		hub:        hub,
 		conn:       conn,
-		Incoming:   make(chan *ConcStatusResponse),
-		Errors:     make(chan error),
+		Incoming:   make(chan *kcache.ConcCacheEvent),
+		lastUpdate: 0,
+		stop:       make(chan bool),
 	}
 }
 
@@ -59,33 +61,50 @@ func (c *Client) CacheIdent() *kcache.CacheIdent {
 	return c.cacheIdent
 }
 
+// Stop asynchronously stops the client
+// by sending 'true' to a respective channel.
+func (c *Client) Stop() {
+	c.stop <- true
+}
+
 // Run starts to listen on all the channels.
 // This method must be used within a goroutine.
 func (c *Client) Run() {
-	defer func() {
-		c.hub.Unregister <- c
-		c.conn.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(1000, "DONE"))
-		c.conn.Close()
-	}()
-
+	defer c.conn.Close()
 	for {
 		cw, err := c.conn.NextWriter(websocket.TextMessage)
 		if err != nil {
 			log.Fatal("ERROR: Failed to create message writer ", err)
 		}
 		select {
-		case msg := <-c.Incoming:
-			ans, err := json.Marshal(msg)
-			if err != nil {
-				c.conn.WriteMessage(websocket.CloseMessage,
-					websocket.FormatCloseMessage(1011, fmt.Sprintf("%s", err)))
+		case stop := <-c.stop:
+			if stop {
+				return
 			}
-			cw.Write(ans)
-		case evtErr := <-c.Errors:
-			c.conn.WriteMessage(websocket.CloseMessage,
-				websocket.FormatCloseMessage(1011, fmt.Sprintf("%s", evtErr)))
-		case <-time.After(5 * time.Second):
+		case event := <-c.Incoming:
+			if event.Error != nil {
+				c.conn.WriteMessage(websocket.CloseMessage,
+					websocket.FormatCloseMessage(websocket.CloseInternalServerErr,
+						fmt.Sprintf("%s", event.Error)))
+
+			} else if event.Record.LastUpdate > c.lastUpdate {
+				status := NewConcStatusResponse(event)
+				c.lastUpdate = event.Record.LastUpdate
+				ans, err := json.Marshal(status)
+				if err != nil {
+					c.conn.WriteMessage(websocket.CloseMessage,
+						websocket.FormatCloseMessage(websocket.CloseInternalServerErr,
+							fmt.Sprintf("%s", err)))
+				}
+				cw.Write(ans)
+				if event.Record.Finished {
+					c.conn.WriteMessage(websocket.CloseMessage,
+						websocket.FormatCloseMessage(websocket.CloseNormalClosure, "DONE"))
+					c.hub.Unregister <- c
+					return
+				}
+			}
+		case <-time.After(1 * time.Minute):
 			log.Printf("INFO: Closing client for cache item %s after timeout.", c.cacheIdent.CacheKey)
 			return
 		}

@@ -79,32 +79,64 @@ func (c *ConcCacheEvent) FullSize() int {
 	return -1
 }
 
-// Watch looks in regular intervals for a specific cache key and
+type Watchdog struct {
+	cacheDB    *taskdb.ConcCacheDB
+	cacheIdent *CacheIdent
+	stop       chan bool
+	events     chan *ConcCacheEvent
+}
+
+// Start initializes the process where the watchdog
+// looks in regular intervals for a specific cache key and
 // sends the data via 'events' channel.
-func Watch(cacheDb *taskdb.ConcCacheDB, corpusID string, cacheKey string, events chan *ConcCacheEvent) {
+func (w *Watchdog) Start() {
 
 	for {
-		rec, err := cacheDb.GetItem(corpusID, cacheKey)
-		if err != nil {
-			events <- &ConcCacheEvent{
-				CorpusID: corpusID,
-				CacheKey: cacheKey,
-				Record:   rec,
-				Error:    err,
+		select {
+		case <-w.stop:
+			return
+		case <-time.After(time.Duration(watchdogWatchIntervalSec) * time.Second):
+			rec, err := w.cacheDB.GetItem(w.cacheIdent.CorpusID, w.cacheIdent.CacheKey)
+			if err != nil {
+				w.events <- &ConcCacheEvent{
+					CorpusID: w.cacheIdent.CorpusID,
+					CacheKey: w.cacheIdent.CacheKey,
+					Record:   rec,
+					Error:    err,
+				}
+				return
 			}
-			break
-		}
 
-		events <- &ConcCacheEvent{
-			CorpusID: corpusID,
-			CacheKey: cacheKey,
-			Record:   rec,
+			w.events <- &ConcCacheEvent{
+				CorpusID: w.cacheIdent.CorpusID,
+				CacheKey: w.cacheIdent.CacheKey,
+				Record:   rec,
+			}
+			if rec.Finished {
+				log.Printf("Watchdog for cache item %s finished.", w.cacheIdent)
+				return
+			}
 		}
-		if rec.Finished {
-			break
-		}
-		time.Sleep(time.Duration(watchdogWatchIntervalSec) * time.Second)
-
 	}
-	log.Printf("Watchdog for cache item %s finished.", cacheKey)
+}
+
+func (w *Watchdog) Stop() {
+	w.stop <- true
+}
+
+type RedisWatchdogFactory struct {
+	cacheDB *taskdb.ConcCacheDB
+}
+
+func (rwf *RedisWatchdogFactory) Create(cacheIdent *CacheIdent, events chan *ConcCacheEvent) *Watchdog {
+	return &Watchdog{
+		cacheDB:    rwf.cacheDB,
+		cacheIdent: cacheIdent,
+		events:     events,
+		stop:       make(chan bool, 1),
+	}
+}
+
+func NewRedisWatchdogFactory(cacheDB *taskdb.ConcCacheDB) *RedisWatchdogFactory {
+	return &RedisWatchdogFactory{cacheDB: cacheDB}
 }

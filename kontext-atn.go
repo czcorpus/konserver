@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/czcorpus/kontext-atn/taskdb"
 	"github.com/czcorpus/kontext-atn/wsserver"
@@ -50,22 +52,30 @@ func loadConfig(path string) (*AppConfig, error) {
 }
 
 func main() {
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGHUP)
 	flag.Parse()
-	conf, err := loadConfig(flag.Arg(0))
-	if err != nil {
-		log.Fatalf("ERROR: Failed to read conf %s: %s", flag.Arg(0), err)
-	}
-	if conf.LogPath != "" {
-		logf, err := os.OpenFile(conf.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
-		if err != nil {
-			log.Fatal("ERROR: ", err)
-		}
-		log.SetOutput(logf)
-	}
 
-	cacheDB := taskdb.NewConcCacheDB(&conf.Redis)
-	hub := wsserver.NewHub(cacheDB)
-	go hub.Run()
-	server := wsserver.NewWSServer(hub, &conf.WSServerConfig, conf.CacheRootDir)
-	server.Serve()
+	for {
+		conf, err := loadConfig(flag.Arg(0))
+		if err != nil {
+			log.Fatalf("ERROR: Failed to read conf %s: %s", flag.Arg(0), err)
+		}
+		if conf.LogPath != "" {
+			logf, err := os.OpenFile(conf.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
+			if err != nil {
+				log.Fatal("ERROR: ", err)
+			}
+			log.SetOutput(logf)
+		}
+
+		cacheDB := taskdb.NewConcCacheDB(&conf.Redis)
+		hub := wsserver.NewHub(cacheDB)
+		server := wsserver.NewWSServer(hub, &conf.WSServerConfig, conf.CacheRootDir)
+		go hub.Run()
+		go server.Serve()
+		<-sc
+		log.Print("Reloading services...")
+		server.Shutdown()
+	}
 }

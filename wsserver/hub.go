@@ -25,28 +25,13 @@ import (
 	"github.com/czcorpus/kontext-atn/taskdb"
 )
 
-// Hub controls the communication between
-// calculation watchdogs and WebSocket clients.
-type Hub struct {
-	Register        chan *Client
-	Unregister      chan *Client
-	ConcCacheEvents chan *kcache.ConcCacheEvent
-	watchedTasks    map[string]*Client // cache ID => client
-	lastUpdates     map[string]int64   // cache ID => unix time
-	cacheDB         *taskdb.ConcCacheDB
-}
-
-// NewHub creates a proper instance of the Hub
-// with all the channels initialized
-func NewHub(cacheDB *taskdb.ConcCacheDB) *Hub {
-	return &Hub{
-		Register:        make(chan *Client),
-		Unregister:      make(chan *Client),
-		ConcCacheEvents: make(chan *kcache.ConcCacheEvent, 5), // TODO configurable buffer
-		watchedTasks:    make(map[string]*Client),
-		lastUpdates:     make(map[string]int64),
-		cacheDB:         cacheDB,
-	}
+// Watcher represents an autonomous object
+// watching for changes in concordance calculation.
+// Here we're interested only in how to start
+// and stop the object.
+type Watcher interface {
+	Start()
+	Stop()
 }
 
 func mkClientHash(client *Client) string {
@@ -63,35 +48,62 @@ func mkEventHash(evt *kcache.ConcCacheEvent) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
+// Hub controls the communication between
+// calculation watchdogs and WebSocket clients.
+type Hub struct {
+	Register        chan *Client
+	Unregister      chan *Client
+	stop            chan bool
+	watchdogFactory *kcache.RedisWatchdogFactory
+	clients         map[string]*Client // cache ID => client
+	watchdogs       map[string]Watcher
+	cacheDB         *taskdb.ConcCacheDB
+}
+
+// NewHub creates a proper instance of the Hub
+// with all the channels initialized
+func NewHub(cacheDB *taskdb.ConcCacheDB) *Hub {
+	return &Hub{
+		watchdogFactory: kcache.NewRedisWatchdogFactory(cacheDB),
+		Register:        make(chan *Client),
+		Unregister:      make(chan *Client),
+		stop:            make(chan bool, 1),
+		watchdogs:       make(map[string]Watcher),
+		clients:         make(map[string]*Client),
+		cacheDB:         cacheDB,
+	}
+}
+
 // Run starts listen on all the channels.
 // This must run in a goroutine.
 func (h *Hub) Run() {
 	for {
 		select {
+		case <-h.stop: // stop whole hub along with all the registered clients & watchdogs
+			for _, w := range h.watchdogs {
+				w.Stop()
+			}
+			for _, c := range h.clients {
+				c.Stop()
+			}
+			return
 		case client := <-h.Register:
-			h.watchedTasks[mkClientHash(client)] = client
+			key := mkClientHash(client)
+			h.clients[key] = client
 			log.Printf("INFO: Registered %v", client)
 			go client.Run()
-			go kcache.Watch(h.cacheDB, client.CacheIdent().CorpusID, client.CacheIdent().CacheKey, h.ConcCacheEvents)
+			h.watchdogs[key] = h.watchdogFactory.Create(client.CacheIdent(), client.Incoming)
+			go h.watchdogs[key].Start()
 		case client := <-h.Unregister:
-			if _, ok := h.watchedTasks[mkClientHash(client)]; ok {
-				delete(h.watchedTasks, mkClientHash(client))
+			key := mkClientHash(client)
+			if w, ok := h.watchdogs[key]; ok {
+				w.Stop()
+				delete(h.watchdogs, key)
+			}
+			if _, ok := h.clients[key]; ok {
+				delete(h.clients, key)
 			}
 			log.Printf("INFO: Unregistered %v", client)
-		case event := <-h.ConcCacheEvents:
-			eventHash := mkEventHash(event)
-			client, ok := h.watchedTasks[eventHash]
-			if ok {
-				if event.Error != nil {
-					client.Errors <- event.Error
-
-				} else if event.Record.LastUpdate > h.lastUpdates[eventHash] {
-					status := NewConcStatusResponse(event)
-					client.Incoming <- status
-					h.lastUpdates[eventHash] = event.Record.LastUpdate
-				}
-			}
 		}
-
 	}
 }
