@@ -62,6 +62,16 @@ func (c *ConcCacheEvent) RelConcSize() float32 {
 	return -1
 }
 
+// ARF returns so called Average Reduced Frequency.
+// This value is typically available once the calculation
+// is done (i.e. it comes with last update event)
+func (c *ConcCacheEvent) ARF() float32 {
+	if c.Record != nil {
+		return c.Record.ARF
+	}
+	return -1
+}
+
 // Finished returns calc. status ("true" means "finished")
 func (c *ConcCacheEvent) Finished() bool {
 	if c.Record != nil {

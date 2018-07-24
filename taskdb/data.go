@@ -30,6 +30,7 @@ type CacheRecord struct {
 	LastUpdate  int64   `json:"last_upd"`
 	PID         int     `json:"pid"`
 	RelConcSize float32 `json:"relconcsize"`
+	ARF         float32 `json:"arf"`
 	FullSize    int     `json:"fullsize"`
 	Finished    bool    `json:"finished"`
 	Error       string  `json:"error"`
