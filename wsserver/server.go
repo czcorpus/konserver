@@ -36,6 +36,8 @@ type Config struct {
 	Address        string   `json:"address"`
 	URLPathRoot    string   `json:"urlPathRoot"`
 	AllowedOrigins []string `json:"allowedOrigins"`
+	SSLCertFile    string   `json:"sslCertFile"`
+	SSLKeyFile     string   `json:"sslKeyFile"`
 }
 
 // WSServer handles HTTP/WebSocket requests/connections defined for kontex-atn
@@ -72,7 +74,11 @@ func NewWSServer(hub *Hub, conf *Config, cacheRootPath string) *WSServer {
 // it is closed.
 func (s *WSServer) Serve() {
 	log.Printf("INFO: Serving at %s", s.conf.Address+s.conf.URLPathRoot)
-	s.httpServer.ListenAndServe()
+	if s.conf.SSLCertFile != "" && s.conf.SSLKeyFile != "" {
+		s.httpServer.ListenAndServeTLS(s.conf.SSLCertFile, s.conf.SSLKeyFile)
+	} else {
+		s.httpServer.ListenAndServe()
+	}
 	http.ListenAndServe(s.conf.Address, s.mux)
 }
 
