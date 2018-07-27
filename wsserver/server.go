@@ -101,6 +101,7 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 					return true
 				}
 			}
+			log.Printf("ERROR: origin %s not found in allowed origins list", origin)
 			return false
 		},
 	}
