@@ -1,9 +1,8 @@
-# kontext-atn
+# konserver
 
-Kontext-atn (= synchronous task notifier) is an optional WebSocket service for
-[KonText](https://github.com/czcorpus/kontext). It can reduce load
-on KonText's web workers by handling realtime notifications about background tasks
-(currently only concordance calculation).
+Konserver is an optional (and kind of experimental) server for KonText
+[KonText](https://github.com/czcorpus/kontext). Its main purpose is to reduce load
+on KonText's web workers by handling realtime notifications and background tasks.
 
 
 ## Configuration
