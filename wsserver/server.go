@@ -18,7 +18,9 @@ package wsserver
 
 import (
 	"context"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -26,6 +28,7 @@ import (
 	"time"
 
 	"github.com/czcorpus/konserver/kcache"
+	"github.com/czcorpus/konserver/workpool"
 	"github.com/gorilla/websocket"
 )
 
@@ -47,11 +50,12 @@ type WSServer struct {
 	mux           *http.ServeMux
 	hub           *Hub
 	cacheRootPath string
+	taskMaster    *workpool.Master
 }
 
 // NewWSServer creates a properly initialized
 // instance of WSServer
-func NewWSServer(hub *Hub, conf *Config, cacheRootPath string) *WSServer {
+func NewWSServer(hub *Hub, conf *Config, taskMaster *workpool.Master, cacheRootPath string) *WSServer {
 	mux := http.NewServeMux()
 	ans := &WSServer{
 		conf:          conf,
@@ -59,6 +63,7 @@ func NewWSServer(hub *Hub, conf *Config, cacheRootPath string) *WSServer {
 		httpServer:    &http.Server{Addr: conf.Address, Handler: mux},
 		hub:           hub,
 		cacheRootPath: cacheRootPath,
+		taskMaster:    taskMaster,
 	}
 
 	if !strings.HasPrefix(ans.conf.URLPathRoot, "/") {
@@ -66,6 +71,8 @@ func NewWSServer(hub *Hub, conf *Config, cacheRootPath string) *WSServer {
 	}
 	ans.mux.HandleFunc(conf.URLPathRoot+"/", ans.serveHome)
 	ans.mux.HandleFunc(conf.URLPathRoot+"/ws", ans.serveNotifier)
+	ans.mux.HandleFunc(conf.URLPathRoot+"/task/", ans.serveTasks)
+	ans.mux.HandleFunc(conf.URLPathRoot+"/result/", ans.serveResults)
 
 	return ans
 }
@@ -88,6 +95,45 @@ func (s *WSServer) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.httpServer.Shutdown(ctx)
+}
+
+func (s *WSServer) serveTasks(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		http.Error(writer, "Bad request", http.StatusBadRequest)
+	}
+	sPos := strings.LastIndex(request.URL.Path, "/")
+	body, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		// TODO handle error properly
+		log.Print("ERROR: ", err)
+	}
+	task := s.taskMaster.SendTask(request.URL.Path[sPos+1:], body)
+	ans, err := json.Marshal(task)
+	if err != nil {
+		// TODO
+		log.Print("ERROR: ", err)
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	io.WriteString(writer, string(ans))
+}
+
+func (s *WSServer) serveResults(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodGet {
+		http.Error(writer, "Bad request", http.StatusBadRequest)
+	}
+	sPos := strings.LastIndex(request.URL.Path, "/")
+	taskResult := s.taskMaster.GetTask(request.URL.Path[sPos+1:])
+	if taskResult == nil {
+		http.Error(writer, "Not found", http.StatusNotFound)
+
+	} else {
+		writer.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(writer)
+		err := enc.Encode(taskResult)
+		if err != nil {
+			http.Error(writer, "Server error", http.StatusInternalServerError)
+		}
+	}
 }
 
 func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Request) {
