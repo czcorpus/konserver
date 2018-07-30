@@ -22,7 +22,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/czcorpus/kontext-atn/kcache"
+	"github.com/czcorpus/konserver/kcache"
 	"github.com/gorilla/websocket"
 )
 

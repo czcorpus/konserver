@@ -25,11 +25,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/czcorpus/kontext-atn/taskdb"
-	"github.com/czcorpus/kontext-atn/wsserver"
+	"github.com/czcorpus/konserver/taskdb"
+	"github.com/czcorpus/konserver/wsserver"
 )
 
-// AppConfig contains whole kontext-atn
+// AppConfig contains whole konserver
 // configuration
 type AppConfig struct {
 	WSServerConfig wsserver.Config        `json:"wsServer"`

@@ -19,7 +19,7 @@ package wsserver
 import (
 	"testing"
 
-	"github.com/czcorpus/kontext-atn/kcache"
+	"github.com/czcorpus/konserver/kcache"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -25,12 +25,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/czcorpus/kontext-atn/kcache"
+	"github.com/czcorpus/konserver/kcache"
 	"github.com/gorilla/websocket"
 )
 
 // Config defines a configuration
-// required by kontext-atn to run the
+// required by konserver to run the
 // embedded WebSocket server.
 type Config struct {
 	Address        string   `json:"address"`
@@ -131,7 +131,7 @@ func (s *WSServer) serveHome(writer http.ResponseWriter, request *http.Request) 
 		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	out := "This is kontext-atn WebSocket server.\n\nUse /ws?corpusId=...&cacheKey=...\nto use concordance status notification service."
+	out := "This is konserver WebSocket server.\n\nUse /ws?corpusId=...&cacheKey=...\nto use concordance status notification service."
 	writer.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	io.WriteString(writer, out)
 }
