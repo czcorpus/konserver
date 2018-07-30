@@ -8,5 +8,5 @@
         "database": 1
     },
     "cacheRootDir": "/var/local/corpora/cache",
-    "logPath": "/var/log/kontext-atn/kontext-atn.log"
+    "logPath": "/var/log/konserver/konserver.log"
 }

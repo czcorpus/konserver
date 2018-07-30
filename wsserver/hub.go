@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/czcorpus/kontext-atn/kcache"
-	"github.com/czcorpus/kontext-atn/taskdb"
+	"github.com/czcorpus/konserver/kcache"
+	"github.com/czcorpus/konserver/taskdb"
 )
 
 // Watcher represents an autonomous object

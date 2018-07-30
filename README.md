@@ -15,7 +15,7 @@ Please refer to [config.sample.json](./config.sample.json).
 
 ```
 [Unit]
-Description=kontext-atn
+Description=konserver
 After=network.target
 
 [Service]
@@ -23,7 +23,7 @@ Type=simple
 Restart=on-failure
 RestartSec=30
 User=www-data
-ExecStart=/bin/bash -c '/opt/go/bin/kontext-atn /opt/kontext-atn/config.json'
+ExecStart=/bin/bash -c '/opt/go/bin/konserver /opt/konserver/config.json'
 ExecStop=/bin/kill -s TERM $MAINPID
 ExecReload=/bin/kill -s HUP $MAINPID
 

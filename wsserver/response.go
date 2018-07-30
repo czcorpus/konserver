@@ -17,7 +17,7 @@
 package wsserver
 
 import (
-	"github.com/czcorpus/kontext-atn/kcache"
+	"github.com/czcorpus/konserver/kcache"
 )
 
 // ConcStatusResponse specifies a conc. calculation

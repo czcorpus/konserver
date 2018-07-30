@@ -21,7 +21,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/czcorpus/kontext-atn/taskdb"
+	"github.com/czcorpus/konserver/taskdb"
 )
 
 const (
