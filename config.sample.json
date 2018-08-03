@@ -4,9 +4,16 @@
         "urlPathRoot": "/kontext/atn"
     },
     "cacheDb": {
-        "address": "10.0.3.188:6379",
+        "address": "10.0.3.149:6379",
         "database": 1
     },
     "cacheRootDir": "/var/local/corpora/cache",
+    "workerMaster": {
+        "poolSize": 2,
+        "program": "python",
+        "programArgs": ["/some/python/script.py"],
+        "execMaxSeconds": 5,
+        "taskResultPersistMaxSeconds": 300
+    },
     "logPath": "/var/log/konserver/konserver.log"
 }

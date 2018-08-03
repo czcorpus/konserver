@@ -26,6 +26,7 @@ import (
 	"syscall"
 
 	"github.com/czcorpus/konserver/taskdb"
+	"github.com/czcorpus/konserver/workpool"
 	"github.com/czcorpus/konserver/wsserver"
 )
 
@@ -35,6 +36,7 @@ type AppConfig struct {
 	WSServerConfig wsserver.Config        `json:"wsServer"`
 	Redis          taskdb.ConcCacheDBConf `json:"cacheDb"`
 	CacheRootDir   string                 `json:"cacheRootDir"`
+	WorkerMaster   workpool.MasterConf    `json:"workerMaster"`
 	LogPath        string                 `json:"logPath"`
 }
 
@@ -71,9 +73,13 @@ func main() {
 
 		cacheDB := taskdb.NewConcCacheDB(&conf.Redis)
 		hub := wsserver.NewHub(cacheDB)
-		server := wsserver.NewWSServer(hub, &conf.WSServerConfig, conf.CacheRootDir)
+		taskMaster := workpool.NewMaster(&conf.WorkerMaster)
+		server := wsserver.NewWSServer(hub, &conf.WSServerConfig, taskMaster, conf.CacheRootDir)
+
 		go hub.Run()
 		go server.Serve()
+		go taskMaster.Start()
+
 		<-sc
 		log.Print("Reloading services...")
 		server.Shutdown()
