@@ -50,12 +50,21 @@ type APIServer struct {
 	mux           *http.ServeMux
 	hub           *Hub
 	cacheRootPath string
-	taskMaster    *workpool.Master
+	taskMaster    TaskMaster
+}
+
+// TaskMaster represents a general task queue
+// as seen from the APIServer perspective.
+type TaskMaster interface {
+	GetTask(taskID string) *workpool.Task
+	SendTask(name string, jsonArgs []byte) *workpool.Task
+	Start()
+	Stop()
 }
 
 // NewAPIServer creates a properly initialized
 // instance of APIServer
-func NewAPIServer(hub *Hub, conf *Config, taskMaster *workpool.Master, cacheRootPath string) *APIServer {
+func NewAPIServer(hub *Hub, conf *Config, taskMaster TaskMaster, cacheRootPath string) *APIServer {
 	mux := http.NewServeMux()
 	ans := &APIServer{
 		conf:          conf,
@@ -77,9 +86,9 @@ func NewAPIServer(hub *Hub, conf *Config, taskMaster *workpool.Master, cacheRoot
 	return ans
 }
 
-// Serve starts the server and blocks until
+// Start starts the server and blocks until
 // it is closed.
-func (s *APIServer) Serve() {
+func (s *APIServer) Start() {
 	log.Printf("INFO: Serving at %s", s.conf.Address+s.conf.URLPathRoot)
 	if s.conf.SSLCertFile != "" && s.conf.SSLKeyFile != "" {
 		s.httpServer.ListenAndServeTLS(s.conf.SSLCertFile, s.conf.SSLKeyFile)
@@ -89,9 +98,9 @@ func (s *APIServer) Serve() {
 	http.ListenAndServe(s.conf.Address, s.mux)
 }
 
-// Shutdown gracefully stops the server
-func (s *APIServer) Shutdown() {
-	log.Print("INFO: Shutting down the web server")
+// Stop gracefully stops the server
+func (s *APIServer) Stop() {
+	log.Print("INFO: Shutting down the web/websocket server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.httpServer.Shutdown(ctx)

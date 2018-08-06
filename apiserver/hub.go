@@ -74,11 +74,12 @@ func NewHub(cacheDB *taskdb.ConcCacheDB) *Hub {
 	}
 }
 
-// Run starts listen on all the channels.
+// Start starts listen on all the channels.
 // This must run in a goroutine.
-func (h *Hub) Run() {
+func (h *Hub) Start() {
 	for {
 		select {
+
 		case <-h.stop: // stop whole hub along with all the registered clients & watchdogs
 			for _, w := range h.watchdogs {
 				w.Stop()
@@ -106,4 +107,12 @@ func (h *Hub) Run() {
 			log.Printf("INFO: Unregistered %v", client)
 		}
 	}
+}
+
+// Stop stops the Hub instance by sending
+// a respective value to Hub's 'stop' channel.
+// The Hub instance will finish currently
+// processed actions.
+func (h *Hub) Stop() {
+	h.stop <- true
 }
