@@ -31,6 +31,14 @@ import (
 type NullQueue struct {
 }
 
+// Info returns overview information used
+// on the "info" page of the API server.
+func (nq *NullQueue) Info() *workpool.MasterInfo {
+	return &workpool.MasterInfo{
+		NumWorkers: 0,
+	}
+}
+
 // GetTask returns always nil
 func (nq *NullQueue) GetTask(taskID string) *workpool.Task {
 	return nil

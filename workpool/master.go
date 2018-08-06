@@ -48,6 +48,10 @@ type MasterConf struct {
 	TaskResultPersistMaxSeconds int `json:"taskResultPersistMaxSeconds"`
 }
 
+type MasterInfo struct {
+	NumWorkers int
+}
+
 // Master handles distribution of tasks to workers
 // and also collecting results.
 type Master struct {
@@ -70,6 +74,14 @@ func NewMaster(conf *MasterConf) *Master {
 		queue:       make(chan *Task, conf.PoolSize),
 		workerEvent: make(chan *WorkerStatus, conf.PoolSize*10),
 		mutex:       &sync.Mutex{},
+	}
+}
+
+// Info returns overview information used
+// on the "info" page of the API server.
+func (m *Master) Info() *MasterInfo {
+	return &MasterInfo{
+		NumWorkers: len(m.workers),
 	}
 }
 

@@ -19,6 +19,7 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"html/template"
 	"io"
 	"io/ioutil"
 	"log"
@@ -41,6 +42,7 @@ type Config struct {
 	AllowedOrigins []string `json:"allowedOrigins"`
 	SSLCertFile    string   `json:"sslCertFile"`
 	SSLKeyFile     string   `json:"sslKeyFile"`
+	StaticFilesDir string   `json:"staticFilesDir"`
 }
 
 // APIServer handles HTTP/WebSocket requests/connections defined for kontex-atn
@@ -56,6 +58,7 @@ type APIServer struct {
 // TaskMaster represents a general task queue
 // as seen from the APIServer perspective.
 type TaskMaster interface {
+	Info() *workpool.MasterInfo
 	GetTask(taskID string) *workpool.Task
 	SendTask(name string, jsonArgs []byte) *workpool.Task
 	Start()
@@ -186,7 +189,17 @@ func (s *APIServer) serveHome(writer http.ResponseWriter, request *http.Request)
 		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	out := "This is konserver WebSocket server.\n\nUse /ws?corpusId=...&cacheKey=...\nto use concordance status notification service."
-	writer.Header().Set("Content-Type", "text/plain; charset=UTF-8")
-	io.WriteString(writer, out)
+	//out := "This is konserver WebSocket server.\n\nUse /ws?corpusId=...&cacheKey=...\nto use concordance status notification service."
+	writer.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	tpl, err := template.ParseFiles(filepath.Join(s.conf.StaticFilesDir, "info", "index.html"))
+	if err != nil {
+		// TODO
+		log.Print("ERROR: ", err)
+	}
+	masterInfo := s.taskMaster.Info()
+	data := InfoPageData{
+		Date:       time.Now().Format("2006-01-02T15:04:05"),
+		MasterInfo: masterInfo,
+	}
+	tpl.Execute(writer, data)
 }
