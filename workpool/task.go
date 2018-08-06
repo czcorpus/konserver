@@ -22,16 +22,16 @@ import (
 )
 
 const (
-	// StatusWaiting means not executed yet
-	StatusWaiting = 0
+	// taskStatusWaiting means not executed yet
+	taskStatusWaiting = 0
 
-	// StatusRunning means execution started
+	// taskStatusRunning means execution started
 	// and no end status obtained yet
-	StatusRunning = 1
+	taskStatusRunning = 1
 
-	// StatusFinished means execution finished
+	// taskStatusFinished means execution finished
 	// without error
-	StatusFinished = 2
+	taskStatusFinished = 2
 )
 
 type Task struct {
@@ -46,7 +46,7 @@ type Task struct {
 }
 
 func (t *Task) IsDone() bool {
-	return t.Status == StatusFinished
+	return t.Status == taskStatusFinished
 }
 
 func (t *Task) String() string {
