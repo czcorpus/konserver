@@ -1,5 +1,5 @@
 {
-    "wsServer": {
+    "apiServer": {
         "address": "localhost:8083",
         "urlPathRoot": "/kontext/atn"
     },
