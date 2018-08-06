@@ -1,12 +1,21 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Konserver info page</title>
+        <title>Konserver status page</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style type="text/css">
+            body {
+                margin: 0;
+                padding: 1em;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 12pt;
+            }
             table {
                 border-spacing: 0;
+            }
+            table.hor th {
+                text-align: left;
             }
             table td, table th {
                 padding: 0.4em;
@@ -19,13 +28,27 @@
     </head>
     <body>
         <h1>Konserver status page</h1>
-        {{.Date}}
+        <table class="hor">
+            <tr>
+                <th>server time:</th><td>{{.Date}}</td>
+            </tr><tr>
+                <th>pool size:</th><td>{{.MasterInfo.PoolSize}}</td>
+            </tr>
+        </table>
         <h2>worker master</h2>
         <table>
             <tr>
-                <th>pool size</th>
-                <td class="num">{{.MasterInfo.NumWorkers}}</td>
+                <th>PID</th>
+                <th>Current status</th>
+                <th>Current task</th>
             </tr>
+            {{range .MasterInfo.WorkersInfo}}
+            <tr>
+                <td>{{.PID}}</td>
+                <td>{{.LastStatus}}</td>
+                <td>{{.TaskID}}</td>
+            </tr>
+            {{end}}
         </table>
     </body>
 </html>

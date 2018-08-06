@@ -35,7 +35,7 @@ type NullQueue struct {
 // on the "info" page of the API server.
 func (nq *NullQueue) Info() *workpool.MasterInfo {
 	return &workpool.MasterInfo{
-		NumWorkers: 0,
+		PoolSize: 0,
 	}
 }
 

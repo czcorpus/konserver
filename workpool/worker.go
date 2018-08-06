@@ -25,11 +25,13 @@ import (
 )
 
 const (
-	WorkerStatusRunning = 1
-	WorkerStatusDone    = 2
-	WorkerStatusStopped = 3
+	workerStatusIdle    = iota
+	workerStatusRunning = iota
+	workerStatusStopped = iota
 )
 
+// WorkerStatus describes current
+// state and task (if applicable) info.
 type WorkerStatus struct {
 	TaskID string      `json:"taskID"`
 	Status int         `json:"status"`
@@ -39,12 +41,35 @@ type WorkerStatus struct {
 }
 
 func (ws *WorkerStatus) IsDone() bool {
-	return ws.Status == WorkerStatusDone || ws.Status == WorkerStatusStopped
+	return ws.Status == workerStatusIdle || ws.Status == workerStatusStopped
 }
 
 func (ws *WorkerStatus) Worker() *Worker {
 	return ws.worker
 }
+
+func (ws *WorkerStatus) ReadableStatus() string {
+	switch ws.Status {
+	case workerStatusRunning:
+		return "running"
+	case workerStatusIdle:
+		return "idle"
+	case workerStatusStopped:
+		return "stopped"
+	default:
+		return "!unknown!"
+	}
+}
+
+// ----------------------------------------------
+
+type WorkerInfo struct {
+	PID        int
+	LastStatus string
+	TaskID     string
+}
+
+// ----------------------------------------------
 
 // Worker controls execution of an external task (program)
 // via Cmd. The task must be able to receive commands via
@@ -61,6 +86,7 @@ type Worker struct {
 	commandsPipe  *CommandPipe
 	responsesPipe *ResponsePipe
 	workerEvent   chan *WorkerStatus
+	lastEvent     WorkerStatus // this is used only for overview purposes
 	taskID        string
 }
 
@@ -116,19 +142,18 @@ func (w *Worker) Start() {
 				var err error
 				err = json.Unmarshal([]byte(data), &ans)
 				if err != nil {
-					w.workerEvent <- &WorkerStatus{
-						TaskID: w.taskID,
-						worker: w,
-						Error:  err.Error(),
-					}
+					ans.TaskID = w.taskID
+					ans.worker = w
+					ans.Error = err.Error()
 					// TODO
 					log.Print("ERROR: ", err)
 
 				} else {
 					ans.TaskID = w.taskID
 					ans.worker = w
-					w.workerEvent <- &ans
 				}
+				w.lastEvent = ans
+				w.workerEvent <- &ans
 
 			}
 		}
@@ -187,4 +212,13 @@ func (w *Worker) Call(taskID string, fn string, args interface{}) {
 	}
 	w.taskID = taskID
 	w.commandsPipe.SendBytes(js)
+}
+
+func (w *Worker) Info() WorkerInfo {
+	ans := WorkerInfo{
+		PID:        w.GetPID(),
+		TaskID:     w.taskID,
+		LastStatus: w.lastEvent.ReadableStatus(),
+	}
+	return ans
 }

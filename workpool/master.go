@@ -49,7 +49,8 @@ type MasterConf struct {
 }
 
 type MasterInfo struct {
-	NumWorkers int
+	PoolSize    int
+	WorkersInfo []WorkerInfo
 }
 
 // Master handles distribution of tasks to workers
@@ -80,8 +81,15 @@ func NewMaster(conf *MasterConf) *Master {
 // Info returns overview information used
 // on the "info" page of the API server.
 func (m *Master) Info() *MasterInfo {
+	workersInfo := make([]WorkerInfo, len(m.workers))
+	i := 0
+	for worker := range m.workers {
+		workersInfo[i] = worker.Info()
+		i++
+	}
 	return &MasterInfo{
-		NumWorkers: len(m.workers),
+		PoolSize:    len(m.workers),
+		WorkersInfo: workersInfo,
 	}
 }
 
@@ -107,7 +115,7 @@ func (m *Master) executeNextTask() {
 			log.Print("INFO: dequed task ", task)
 			if task != nil {
 				m.workers[worker] = task
-				task.Status = StatusRunning
+				task.Status = taskStatusRunning
 				worker.Call(task.TaskID, task.Fn, task.Args)
 			}
 		default:
@@ -124,7 +132,7 @@ func (m *Master) checkForStuckWorkers() {
 			worker.Stop() // TODO what if this takes a long time???
 			worker.Start()
 			task.Error = "Task execution limit reached"
-			task.Status = StatusFinished
+			task.Status = taskStatusFinished
 			task.Touch()
 			//m.mutex.Unlock()
 			log.Printf("WARNING: restarted stuck worker %v", worker)
@@ -165,7 +173,7 @@ func (m *Master) listenForEvents() {
 					}
 					if v.IsDone() {
 						task.Error = v.Error
-						task.Status = StatusFinished
+						task.Status = taskStatusFinished
 						task.Result = v.Result
 						m.workers[v.Worker()] = nil
 					}
@@ -249,7 +257,7 @@ func (m *Master) SendTask(name string, jsonArgs []byte) *Task {
 	}
 	task := &Task{
 		TaskID:  taskID.String(),
-		Status:  StatusWaiting,
+		Status:  taskStatusWaiting,
 		Fn:      name,
 		Args:    args,
 		Created: time.Now().Unix(),
