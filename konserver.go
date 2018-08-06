@@ -17,9 +17,7 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -28,30 +26,8 @@ import (
 	"github.com/czcorpus/konserver/apiserver"
 	"github.com/czcorpus/konserver/taskdb"
 	"github.com/czcorpus/konserver/workpool"
+	"github.com/czcorpus/konserver/workpool/nullqueue"
 )
-
-// AppConfig contains whole konserver
-// configuration
-type AppConfig struct {
-	APIServerConfig apiserver.Config       `json:"apiServer"`
-	Redis           taskdb.ConcCacheDBConf `json:"cacheDb"`
-	CacheRootDir    string                 `json:"cacheRootDir"`
-	WorkerMaster    workpool.MasterConf    `json:"workerMaster"`
-	LogPath         string                 `json:"logPath"`
-}
-
-func loadConfig(path string) (*AppConfig, error) {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var conf AppConfig
-	err = json.Unmarshal(data, &conf)
-	if err != nil {
-		return nil, err
-	}
-	return &conf, nil
-}
 
 func main() {
 	sc := make(chan os.Signal, 1)
@@ -73,7 +49,13 @@ func main() {
 
 		cacheDB := taskdb.NewConcCacheDB(&conf.Redis)
 		hub := apiserver.NewHub(cacheDB)
-		taskMaster := workpool.NewMaster(&conf.WorkerMaster)
+		var taskMaster apiserver.TaskMaster
+		if conf.WorkerMaster.PoolSize > 0 {
+			taskMaster = workpool.NewMaster(&conf.WorkerMaster)
+
+		} else {
+			taskMaster = &nullqueue.NullQueue{}
+		}
 		server := apiserver.NewAPIServer(hub, &conf.APIServerConfig, taskMaster, conf.CacheRootDir)
 
 		go hub.Run()

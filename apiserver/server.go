@@ -50,12 +50,20 @@ type APIServer struct {
 	mux           *http.ServeMux
 	hub           *Hub
 	cacheRootPath string
-	taskMaster    *workpool.Master
+	taskMaster    TaskMaster
+}
+
+// TaskMaster represents a general task queue
+// as seen from the APIServer perspective.
+type TaskMaster interface {
+	GetTask(taskID string) *workpool.Task
+	SendTask(name string, jsonArgs []byte) *workpool.Task
+	Start()
 }
 
 // NewAPIServer creates a properly initialized
 // instance of APIServer
-func NewAPIServer(hub *Hub, conf *Config, taskMaster *workpool.Master, cacheRootPath string) *APIServer {
+func NewAPIServer(hub *Hub, conf *Config, taskMaster TaskMaster, cacheRootPath string) *APIServer {
 	mux := http.NewServeMux()
 	ans := &APIServer{
 		conf:          conf,
@@ -91,7 +99,7 @@ func (s *APIServer) Serve() {
 
 // Shutdown gracefully stops the server
 func (s *APIServer) Shutdown() {
-	log.Print("INFO: Shutting down the web server")
+	log.Print("INFO: Shutting down the web/websocket server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.httpServer.Shutdown(ctx)
