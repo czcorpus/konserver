@@ -94,8 +94,9 @@ type Worker struct {
 // to the worker. It is expected to be JSON
 // serializable.
 type workerCall struct {
-	Fn   string      `json:"fn"`
-	Args interface{} `json:"args"`
+	Fn     string      `json:"fn"`
+	Args   interface{} `json:"args"`
+	TaskID string      `json:"task_id"`
 }
 
 // NewWorker is a default factory for Worker
@@ -203,8 +204,9 @@ func (w *Worker) Reload() {
 // just passes it to the worker.
 func (w *Worker) Call(taskID string, fn string, args interface{}) {
 	js, err := json.Marshal(workerCall{
-		Fn:   fn,
-		Args: args,
+		Fn:     fn,
+		Args:   args,
+		TaskID: taskID,
 	})
 	if err != nil {
 		// TODO
