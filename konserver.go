@@ -65,5 +65,7 @@ func main() {
 		<-sc
 		log.Print("Reloading services...")
 		server.Stop()
+		hub.Stop()
+		taskMaster.Stop()
 	}
 }

@@ -47,3 +47,6 @@ func (nq *NullQueue) SendTask(name string, jsonArgs []byte) *workpool.Task {
 func (nq *NullQueue) Start() {
 	log.Print("WARNING: Worker server is disabled in the configuration")
 }
+
+// Stop fakes stopping the service.
+func (nq *NullQueue) Stop() {}

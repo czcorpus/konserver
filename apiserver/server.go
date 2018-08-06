@@ -59,6 +59,7 @@ type TaskMaster interface {
 	GetTask(taskID string) *workpool.Task
 	SendTask(name string, jsonArgs []byte) *workpool.Task
 	Start()
+	Stop()
 }
 
 // NewAPIServer creates a properly initialized
