@@ -74,9 +74,9 @@ func NewHub(cacheDB *taskdb.ConcCacheDB) *Hub {
 	}
 }
 
-// Run starts listen on all the channels.
+// Start starts listen on all the channels.
 // This must run in a goroutine.
-func (h *Hub) Run() {
+func (h *Hub) Start() {
 	for {
 		select {
 		case <-h.stop: // stop whole hub along with all the registered clients & watchdogs

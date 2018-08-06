@@ -58,12 +58,12 @@ func main() {
 		}
 		server := apiserver.NewAPIServer(hub, &conf.APIServerConfig, taskMaster, conf.CacheRootDir)
 
-		go hub.Run()
-		go server.Serve()
+		go hub.Start()
+		go server.Start()
 		go taskMaster.Start()
 
 		<-sc
 		log.Print("Reloading services...")
-		server.Shutdown()
+		server.Stop()
 	}
 }

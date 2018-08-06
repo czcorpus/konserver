@@ -85,9 +85,9 @@ func NewAPIServer(hub *Hub, conf *Config, taskMaster TaskMaster, cacheRootPath s
 	return ans
 }
 
-// Serve starts the server and blocks until
+// Start starts the server and blocks until
 // it is closed.
-func (s *APIServer) Serve() {
+func (s *APIServer) Start() {
 	log.Printf("INFO: Serving at %s", s.conf.Address+s.conf.URLPathRoot)
 	if s.conf.SSLCertFile != "" && s.conf.SSLKeyFile != "" {
 		s.httpServer.ListenAndServeTLS(s.conf.SSLCertFile, s.conf.SSLKeyFile)
@@ -97,8 +97,8 @@ func (s *APIServer) Serve() {
 	http.ListenAndServe(s.conf.Address, s.mux)
 }
 
-// Shutdown gracefully stops the server
-func (s *APIServer) Shutdown() {
+// Stop gracefully stops the server
+func (s *APIServer) Stop() {
 	log.Print("INFO: Shutting down the web/websocket server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
