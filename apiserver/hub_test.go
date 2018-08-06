@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wsserver
+package apiserver
 
 import (
 	"testing"
@@ -24,7 +24,7 @@ import (
 )
 
 func TestMkClientHash(t *testing.T) {
-	c := &Client{
+	c := &WSClient{
 		cacheIdent: &kcache.CacheIdent{
 			CorpusID: "foo",
 			CacheKey: "abcdef",
@@ -44,7 +44,7 @@ func TestMKEventHash(t *testing.T) {
 }
 
 func TestMkClientEventHashEqual(t *testing.T) {
-	c := &Client{
+	c := &WSClient{
 		cacheIdent: &kcache.CacheIdent{
 			CorpusID: "syn2015",
 			CacheKey: "abcdef01234567890",

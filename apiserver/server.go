@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wsserver
+package apiserver
 
 import (
 	"context"
@@ -43,8 +43,8 @@ type Config struct {
 	SSLKeyFile     string   `json:"sslKeyFile"`
 }
 
-// WSServer handles HTTP/WebSocket requests/connections defined for kontex-atn
-type WSServer struct {
+// APIServer handles HTTP/WebSocket requests/connections defined for kontex-atn
+type APIServer struct {
 	conf          *Config
 	httpServer    *http.Server
 	mux           *http.ServeMux
@@ -53,11 +53,11 @@ type WSServer struct {
 	taskMaster    *workpool.Master
 }
 
-// NewWSServer creates a properly initialized
-// instance of WSServer
-func NewWSServer(hub *Hub, conf *Config, taskMaster *workpool.Master, cacheRootPath string) *WSServer {
+// NewAPIServer creates a properly initialized
+// instance of APIServer
+func NewAPIServer(hub *Hub, conf *Config, taskMaster *workpool.Master, cacheRootPath string) *APIServer {
 	mux := http.NewServeMux()
-	ans := &WSServer{
+	ans := &APIServer{
 		conf:          conf,
 		mux:           mux,
 		httpServer:    &http.Server{Addr: conf.Address, Handler: mux},
@@ -79,7 +79,7 @@ func NewWSServer(hub *Hub, conf *Config, taskMaster *workpool.Master, cacheRootP
 
 // Serve starts the server and blocks until
 // it is closed.
-func (s *WSServer) Serve() {
+func (s *APIServer) Serve() {
 	log.Printf("INFO: Serving at %s", s.conf.Address+s.conf.URLPathRoot)
 	if s.conf.SSLCertFile != "" && s.conf.SSLKeyFile != "" {
 		s.httpServer.ListenAndServeTLS(s.conf.SSLCertFile, s.conf.SSLKeyFile)
@@ -90,14 +90,14 @@ func (s *WSServer) Serve() {
 }
 
 // Shutdown gracefully stops the server
-func (s *WSServer) Shutdown() {
+func (s *APIServer) Shutdown() {
 	log.Print("INFO: Shutting down the web server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.httpServer.Shutdown(ctx)
 }
 
-func (s *WSServer) serveTasks(writer http.ResponseWriter, request *http.Request) {
+func (s *APIServer) serveTasks(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodPost {
 		http.Error(writer, "Bad request", http.StatusBadRequest)
 	}
@@ -117,7 +117,7 @@ func (s *WSServer) serveTasks(writer http.ResponseWriter, request *http.Request)
 	io.WriteString(writer, string(ans))
 }
 
-func (s *WSServer) serveResults(writer http.ResponseWriter, request *http.Request) {
+func (s *APIServer) serveResults(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodGet {
 		http.Error(writer, "Bad request", http.StatusBadRequest)
 	}
@@ -136,7 +136,7 @@ func (s *WSServer) serveResults(writer http.ResponseWriter, request *http.Reques
 	}
 }
 
-func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Request) {
+func (s *APIServer) serveNotifier(writer http.ResponseWriter, request *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -164,11 +164,11 @@ func (s *WSServer) serveNotifier(writer http.ResponseWriter, request *http.Reque
 		CacheKey:      cacheKey,
 		CacheFilePath: filepath.Join(s.cacheRootPath, corpusID, cacheKey+".conc"),
 	}
-	s.hub.Register <- NewClient(cacheIdent, s.hub, conn)
+	s.hub.Register <- NewWSClient(cacheIdent, s.hub, conn)
 }
 
 // serveHome provides some information about running server
-func (s *WSServer) serveHome(writer http.ResponseWriter, request *http.Request) {
+func (s *APIServer) serveHome(writer http.ResponseWriter, request *http.Request) {
 	if request.URL.Path != s.conf.URLPathRoot+"/info" {
 		http.Error(writer, "Not found", http.StatusNotFound)
 		return

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wsserver
+package apiserver
 
 import (
 	"crypto/md5"
@@ -34,7 +34,7 @@ type Watcher interface {
 	Stop()
 }
 
-func mkClientHash(client *Client) string {
+func mkClientHash(client *WSClient) string {
 	h := md5.New()
 	h.Write([]byte(client.CacheIdent().CorpusID))
 	h.Write([]byte(client.CacheIdent().CacheKey))
@@ -51,11 +51,11 @@ func mkEventHash(evt *kcache.ConcCacheEvent) string {
 // Hub controls the communication between
 // calculation watchdogs and WebSocket clients.
 type Hub struct {
-	Register        chan *Client
-	Unregister      chan *Client
+	Register        chan *WSClient
+	Unregister      chan *WSClient
 	stop            chan bool
 	watchdogFactory *kcache.RedisWatchdogFactory
-	clients         map[string]*Client // cache ID => client
+	clients         map[string]*WSClient // cache ID => client
 	watchdogs       map[string]Watcher
 	cacheDB         *taskdb.ConcCacheDB
 }
@@ -65,11 +65,11 @@ type Hub struct {
 func NewHub(cacheDB *taskdb.ConcCacheDB) *Hub {
 	return &Hub{
 		watchdogFactory: kcache.NewRedisWatchdogFactory(cacheDB),
-		Register:        make(chan *Client),
-		Unregister:      make(chan *Client),
+		Register:        make(chan *WSClient),
+		Unregister:      make(chan *WSClient),
 		stop:            make(chan bool, 1),
 		watchdogs:       make(map[string]Watcher),
-		clients:         make(map[string]*Client),
+		clients:         make(map[string]*WSClient),
 		cacheDB:         cacheDB,
 	}
 }

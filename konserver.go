@@ -25,19 +25,19 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/czcorpus/konserver/apiserver"
 	"github.com/czcorpus/konserver/taskdb"
 	"github.com/czcorpus/konserver/workpool"
-	"github.com/czcorpus/konserver/wsserver"
 )
 
 // AppConfig contains whole konserver
 // configuration
 type AppConfig struct {
-	WSServerConfig wsserver.Config        `json:"wsServer"`
-	Redis          taskdb.ConcCacheDBConf `json:"cacheDb"`
-	CacheRootDir   string                 `json:"cacheRootDir"`
-	WorkerMaster   workpool.MasterConf    `json:"workerMaster"`
-	LogPath        string                 `json:"logPath"`
+	APIServerConfig apiserver.Config       `json:"apiServer"`
+	Redis           taskdb.ConcCacheDBConf `json:"cacheDb"`
+	CacheRootDir    string                 `json:"cacheRootDir"`
+	WorkerMaster    workpool.MasterConf    `json:"workerMaster"`
+	LogPath         string                 `json:"logPath"`
 }
 
 func loadConfig(path string) (*AppConfig, error) {
@@ -72,9 +72,9 @@ func main() {
 		}
 
 		cacheDB := taskdb.NewConcCacheDB(&conf.Redis)
-		hub := wsserver.NewHub(cacheDB)
+		hub := apiserver.NewHub(cacheDB)
 		taskMaster := workpool.NewMaster(&conf.WorkerMaster)
-		server := wsserver.NewWSServer(hub, &conf.WSServerConfig, taskMaster, conf.CacheRootDir)
+		server := apiserver.NewAPIServer(hub, &conf.APIServerConfig, taskMaster, conf.CacheRootDir)
 
 		go hub.Run()
 		go server.Serve()
