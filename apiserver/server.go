@@ -164,7 +164,7 @@ func (s *APIServer) serveNotifier(writer http.ResponseWriter, request *http.Requ
 		CacheKey:      cacheKey,
 		CacheFilePath: filepath.Join(s.cacheRootPath, corpusID, cacheKey+".conc"),
 	}
-	s.hub.Register <- NewClient(cacheIdent, s.hub, conn)
+	s.hub.Register <- NewWSClient(cacheIdent, s.hub, conn)
 }
 
 // serveHome provides some information about running server

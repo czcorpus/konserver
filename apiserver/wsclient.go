@@ -26,10 +26,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Client keeps connection with actual remote
+// WSClient keeps connection with actual remote
 // client (= browser) and sends data it recieves
 // from a respective channel.
-type Client struct {
+type WSClient struct {
 	cacheIdent *kcache.CacheIdent
 	hub        *Hub
 	conn       *websocket.Conn
@@ -38,10 +38,10 @@ type Client struct {
 	stop       chan bool
 }
 
-// NewClient creates a proper instance of Client
+// NewWSClient creates a proper instance of Client
 // with all the channels initialized.
-func NewClient(cacheIdent *kcache.CacheIdent, hub *Hub, conn *websocket.Conn) *Client {
-	return &Client{
+func NewWSClient(cacheIdent *kcache.CacheIdent, hub *Hub, conn *websocket.Conn) *WSClient {
+	return &WSClient{
 		cacheIdent: cacheIdent,
 		hub:        hub,
 		conn:       conn,
@@ -51,25 +51,25 @@ func NewClient(cacheIdent *kcache.CacheIdent, hub *Hub, conn *websocket.Conn) *C
 	}
 }
 
-func (c *Client) String() string {
-	return fmt.Sprintf("Client[%s, %s]", c.cacheIdent.CorpusID, c.cacheIdent.CacheKey)
+func (c *WSClient) String() string {
+	return fmt.Sprintf("WSClient[%s, %s]", c.cacheIdent.CorpusID, c.cacheIdent.CacheKey)
 }
 
 // CacheIdent returns a complete concordance cache
 // identification based on how KonText works.
-func (c *Client) CacheIdent() *kcache.CacheIdent {
+func (c *WSClient) CacheIdent() *kcache.CacheIdent {
 	return c.cacheIdent
 }
 
 // Stop asynchronously stops the client
 // by sending 'true' to a respective channel.
-func (c *Client) Stop() {
+func (c *WSClient) Stop() {
 	c.stop <- true
 }
 
 // Run starts to listen on all the channels.
 // This method must be used within a goroutine.
-func (c *Client) Run() {
+func (c *WSClient) Run() {
 	defer c.conn.Close()
 	for {
 		cw, err := c.conn.NextWriter(websocket.TextMessage)
