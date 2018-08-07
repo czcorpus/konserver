@@ -1,11 +1,32 @@
-# konserver
+# KonServer
 
-Konserver is an optional (and kind of experimental) server for KonText
-[KonText](https://github.com/czcorpus/kontext). Its main purpose is to reduce load
-on KonText's web workers by handling realtime notifications and background tasks.
+KonServer is an asynchronous task queue and calculation status notifier (supporting WebSocket)
+for KonText [KonText](https://github.com/czcorpus/kontext). It can be used instead
+of [Celery](http://www.celeryproject.org/) along with KonText. Celery support will remain for
+future versions of KonText.
+
+:construction:
+Please note that this project is under development. For production deployment of KonText
+use Celery.
+:construction:
 
 
 ## Configuration
+
+### KonText
+
+```xml
+<kontext>
+    ...
+    <calc_backend>
+        <type>konserver</type>
+        <conf>/var/www/kontext/conf/konserverconfig.py</conf>
+        <status_service_url>ws://127.0.0.1:8083/kontext/atn/ws</status_service_url>
+        <time_limit>120</time_limit>
+    </calc_backend>
+    ...
+</kontext>
+```
 
 ### application
 
