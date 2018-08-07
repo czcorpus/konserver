@@ -1,7 +1,8 @@
 {
     "apiServer": {
         "address": "localhost:8083",
-        "urlPathRoot": "/kontext/atn"
+        "urlPathRoot": "/kontext/atn",
+        "staticFilesDir": "/home/tomas/work/go/src/github.com/czcorpus/konserver/resources"
     },
     "cacheDb": {
         "address": "10.0.3.149:6379",

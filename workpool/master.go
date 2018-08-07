@@ -46,6 +46,8 @@ type MasterConf struct {
 	ExecMaxSeconds int `json:"execMaxSeconds"`
 
 	TaskResultPersistMaxSeconds int `json:"taskResultPersistMaxSeconds"`
+
+	MaxResponsePipeBufferSize int `json:"maxResponsePipeBufferSize"`
 }
 
 type MasterInfo struct {
@@ -176,6 +178,7 @@ func (m *Master) listenForEvents() {
 						task.Status = taskStatusFinished
 						task.Result = v.Result
 						m.workers[v.Worker()] = nil
+						log.Printf("INFO: task %s finished.", task.TaskID)
 					}
 					task.Touch()
 					m.queueEvent <- true
@@ -198,7 +201,7 @@ func (m *Master) listenForEvents() {
 func (m *Master) Start() {
 	for i := 0; i < m.conf.PoolSize; i++ {
 		args := append(m.conf.ProgramArgs, fmt.Sprintf("W%d", i))
-		worker := NewWorker(m.workerEvent, m.conf.Program, args...)
+		worker := NewWorker(m.workerEvent, m.conf.MaxResponsePipeBufferSize, m.conf.Program, args...)
 		m.workers[worker] = nil
 		worker.Start() // TODO we must catch errors in worker via a channel
 		/*
