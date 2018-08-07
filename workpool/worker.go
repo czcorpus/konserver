@@ -80,14 +80,15 @@ type WorkerInfo struct {
 // line characters which are part of commands do not split
 // a single command into multiple commands.
 type Worker struct {
-	commandName   string
-	args          []string
-	cmd           *exec.Cmd
-	commandsPipe  *CommandPipe
-	responsesPipe *ResponsePipe
-	workerEvent   chan *WorkerStatus
-	lastEvent     WorkerStatus // this is used only for overview purposes
-	taskID        string
+	commandName               string
+	args                      []string
+	cmd                       *exec.Cmd
+	commandsPipe              *CommandPipe
+	responsesPipe             *ResponsePipe
+	workerEvent               chan *WorkerStatus
+	lastEvent                 WorkerStatus // this is used only for overview purposes
+	taskID                    string
+	maxResponsePipeBufferSize int
 }
 
 // workerCall describe a single function call
@@ -100,16 +101,17 @@ type workerCall struct {
 }
 
 // NewWorker is a default factory for Worker
-func NewWorker(workerEvent chan *WorkerStatus, command string, args ...string) *Worker {
+func NewWorker(workerEvent chan *WorkerStatus, maxResponsePipeBufferSize int, command string, args ...string) *Worker {
 	return &Worker{
-		commandName: command,
-		args:        args,
-		workerEvent: workerEvent,
+		commandName:               command,
+		args:                      args,
+		workerEvent:               workerEvent,
+		maxResponsePipeBufferSize: maxResponsePipeBufferSize,
 	}
 }
 
 func (w *Worker) String() string {
-	return fmt.Sprintf("Worker %s, pid: %d", w.commandName, w.GetPID())
+	return fmt.Sprintf("Worker[pid: %d, curr. task: %s]", w.GetPID(), w.taskID)
 }
 
 // GetPID returns actual PID of a respective external task.
@@ -126,7 +128,7 @@ func (w *Worker) GetPID() int {
 // responses of the task.
 func (w *Worker) Start() {
 	w.commandsPipe = NewCommandPipe()
-	w.responsesPipe = NewResponsePipe()
+	w.responsesPipe = NewResponsePipe(w.maxResponsePipeBufferSize)
 	var err error
 	w.cmd = exec.Command(w.commandName, w.args...)
 	w.responsesPipe.Register(w.cmd)
@@ -138,10 +140,11 @@ func (w *Worker) Start() {
 		for {
 			select {
 			case data := <-ch:
-				log.Print("RECEIVED DATA ", data)
+				log.Print("GOT FROM PIPE ", data)
 				var ans WorkerStatus
 				var err error
 				err = json.Unmarshal([]byte(data), &ans)
+				log.Print("DECODED FROM PIPE: ", ans)
 				if err != nil {
 					ans.TaskID = w.taskID
 					ans.worker = w
@@ -150,7 +153,6 @@ func (w *Worker) Start() {
 					log.Print("ERROR: ", err)
 
 				} else {
-					ans.TaskID = w.taskID
 					ans.worker = w
 				}
 				w.lastEvent = ans
@@ -190,12 +192,6 @@ func (w *Worker) Stop() {
 	w.commandsPipe.writer.Close()
 	w.responsesPipe.reader.Close()
 	w.responsesPipe.writer.Close()
-	w.taskID = ""
-}
-
-// Reload sends SIGHUP to the running task
-func (w *Worker) Reload() {
-	w.cmd.Process.Signal(syscall.SIGHUP)
 }
 
 // Call sends a speicifed command to the worker.
@@ -214,6 +210,11 @@ func (w *Worker) Call(taskID string, fn string, args interface{}) {
 	}
 	w.taskID = taskID
 	w.commandsPipe.SendBytes(js)
+}
+
+// Reload sends SIGHUP to the running task
+func (w *Worker) Reload() {
+	w.cmd.Process.Signal(syscall.SIGHUP)
 }
 
 func (w *Worker) Info() WorkerInfo {
