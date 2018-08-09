@@ -146,6 +146,7 @@ func (m *Master) checkForStuckWorkers() {
 func (m *Master) checkForOldTasks() {
 	for taskID, task := range m.tasks {
 		if task.IsDone() && task.SecondsSinceUpdate() > m.conf.TaskResultPersistMaxSeconds {
+			log.Print("DELETE TASK >>>>>>>> ", taskID)
 			delete(m.tasks, taskID)
 		}
 	}
@@ -170,17 +171,18 @@ func (m *Master) listenForEvents() {
 				if v.IsDone() {
 					task, ok := m.tasks[v.TaskID]
 					if !ok {
-						// TODO
-						log.Print("ERROR: worker event no longer valid (task gone)")
+						log.Printf("ERROR: worker event no longer valid (task \"%s\" gone)", v.TaskID)
+
+					} else {
+						if v.IsDone() {
+							task.Error = v.Error
+							task.Status = taskStatusFinished
+							task.Result = v.Result
+							m.workers[v.Worker()] = nil
+							log.Printf("INFO: task %s finished.", task.TaskID)
+						}
+						task.Touch()
 					}
-					if v.IsDone() {
-						task.Error = v.Error
-						task.Status = taskStatusFinished
-						task.Result = v.Result
-						m.workers[v.Worker()] = nil
-						log.Printf("INFO: task %s finished.", task.TaskID)
-					}
-					task.Touch()
 					m.queueEvent <- true
 
 				} else {

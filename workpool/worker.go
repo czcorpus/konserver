@@ -33,11 +33,12 @@ const (
 // WorkerStatus describes current
 // state and task (if applicable) info.
 type WorkerStatus struct {
-	TaskID string      `json:"taskID"`
-	Status int         `json:"status"`
-	Error  string      `json:"error"`
-	Result interface{} `json:"result"`
-	worker *Worker
+	TaskID    string      `json:"taskID"`
+	Status    int         `json:"status"`
+	Error     string      `json:"error"`
+	Traceback []string    `json:"traceback"`
+	Result    interface{} `json:"result"`
+	worker    *Worker
 }
 
 func (ws *WorkerStatus) IsDone() bool {
@@ -150,9 +151,10 @@ func (w *Worker) Start() {
 					ans.worker = w
 					ans.Error = err.Error()
 					// TODO
-					log.Print("ERROR: ", err)
+					log.Print("ERROR: failed to parse worker response: ", err)
 
 				} else {
+					ans.TaskID = w.taskID
 					ans.worker = w
 				}
 				w.lastEvent = ans
@@ -199,6 +201,7 @@ func (w *Worker) Stop() {
 // data. Konserver does not care about it contents and
 // just passes it to the worker.
 func (w *Worker) Call(taskID string, fn string, args interface{}) {
+	log.Print(">>>> SEDING CALL ", taskID)
 	js, err := json.Marshal(workerCall{
 		Fn:     fn,
 		Args:   args,
