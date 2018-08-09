@@ -2,6 +2,7 @@
     "apiServer": {
         "address": "localhost:8083",
         "urlPathRoot": "/kontext/atn",
+        "allowedOrigins": ["http://kontext.korpus.test"],
         "staticFilesDir": "/home/tomas/work/go/src/github.com/czcorpus/konserver/resources"
     },
     "cacheDb": {
@@ -14,7 +15,8 @@
         "program": "python",
         "programArgs": ["/some/python/script.py"],
         "execMaxSeconds": 5,
-        "taskResultPersistMaxSeconds": 300
+        "taskResultPersistMaxSeconds": 300,
+        "maxResponsePipeBufferSize": 8388608
     },
     "logPath": "/var/log/konserver/konserver.log"
 }
