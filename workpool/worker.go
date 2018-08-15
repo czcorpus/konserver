@@ -173,11 +173,13 @@ func (w *Worker) Start() {
 			switch terr := err.(type) {
 			case *exec.ExitError:
 				w.workerEvent <- &WorkerStatus{
+					TaskID: w.taskID,
 					worker: w,
 					Error:  terr.Error(), // TODO
 				}
 			default:
 				w.workerEvent <- &WorkerStatus{
+					TaskID: w.taskID,
 					worker: w,
 					Error:  err.Error(),
 				}
@@ -201,7 +203,7 @@ func (w *Worker) Stop() {
 // data. Konserver does not care about it contents and
 // just passes it to the worker.
 func (w *Worker) Call(taskID string, fn string, args interface{}) {
-	log.Print(">>>> SEDING CALL ", taskID)
+	log.Print(">>>> SENDING CALL ", taskID)
 	js, err := json.Marshal(workerCall{
 		Fn:     fn,
 		Args:   args,
